@@ -55,14 +55,12 @@ class User(BaseModel):
     password: str
 
 def authenticate_user(token):
-    print(token)
-    if True:
+    try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print(users)
         for user in users:
             if user['token'] == token:
                 return True
-    else:
+    except:
         return False
 
 
