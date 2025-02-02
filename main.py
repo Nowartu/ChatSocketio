@@ -1,11 +1,11 @@
-from datetime import datetime, date, timedelta
-from fastapi import FastAPI, Depends, HTTPException, APIRouter
-from fastapi.middleware.cors import CORSMiddleware
+from datetime import datetime, timedelta
+from fastapi import FastAPI, Depends, HTTPException
 import socketio
 import uvicorn
 from database import users, get_session, get_session_fa, Message
 from pydantic import BaseModel
 import jwt
+from fastapi.staticfiles import StaticFiles
 
 SECRET_KEY = 'KEY'
 ALGORITHM = 'HS256'
@@ -17,7 +17,7 @@ sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode='asgi')
 socket_app = socketio.ASGIApp(sio)
 app.add_route("/socket.io/", route=socket_app, methods=["GET", "POST", 'OPTIONS'])
 app.add_websocket_route("/socket.io/", socket_app)
-
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class ConnectionManager:
     def __init__(self):
