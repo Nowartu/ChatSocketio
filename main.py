@@ -1,23 +1,32 @@
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Request
 import socketio
 import uvicorn
 from database import users, get_session, get_session_fa, Message
 from pydantic import BaseModel
 import jwt
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 
 SECRET_KEY = 'KEY'
 ALGORITHM = 'HS256'
 
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=['*'],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode='asgi')
 
-socket_app = socketio.ASGIApp(sio)
-app.add_route("/socket.io/", route=socket_app, methods=["GET", "POST", 'OPTIONS'])
-app.add_websocket_route("/socket.io/", socket_app)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+socket_app = socketio.ASGIApp(sio, app)
+
+templates = Jinja2Templates(directory="templates")
+
 
 class ConnectionManager:
     def __init__(self):
@@ -25,12 +34,12 @@ class ConnectionManager:
 
     async def connect(self, data):
         self.clients[data['sid']] = data['user']
-        await sio.emit('sysmessage', {'data': f"User joined room {data['user']}"})
+        await sio.emit('sysmessage', {'data': f"User {data['user']} joined room"})
 
     async def disconnect(self, sid):
         user = self.clients[sid]
         del self.clients[sid]
-        await sio.emit('sysmessage', {'data': f"User left room {user}"})
+        await sio.emit('sysmessage', {'data': f"User {user} left room"})
 
     async def send_messages(self, sid, message):
         ts = datetime.now()
@@ -65,8 +74,15 @@ def authenticate_user(token):
 
 
 @app.get("/")
-def read_root():
-    return {"Hello": "World"}
+def read_root(request: Request):
+    return templates.TemplateResponse(request=request, name="index.html")
+
+
+@app.get("/users/")
+def get_users(token: str):
+    if not authenticate_user(token):
+        raise HTTPException(401, detail="Unauthorized")
+    return [x for x in cm.clients.values()]
 
 
 @app.post("/add_user/")
@@ -113,13 +129,13 @@ def get_history(day: datetime, token: str, db = Depends(get_session_fa)):
 @sio.on("connect")
 async def connect(sid, env, auth):
     if not authenticate_user(auth):
-        raise ConnectionRefusedError('authentication failed')
+        return False#raise ConnectionRefusedError('authentication failed')
     for user in users:
         if user['token'] == auth:
             await cm.connect({"sid": sid, "user": user['login']})
             break
     else:
-        raise ConnectionRefusedError('authentication failed')
+        return False# raise ConnectionRefusedError('authentication failed')
 
 
 @sio.on('message')
@@ -130,9 +146,9 @@ async def handle_message(sid, data):
 
 
 @sio.on("disconnect")
-async def disconnect(sid):
+async def disconnect(sid, reason):
     await cm.disconnect(sid)
 
 
 if __name__ == '__main__':
-    uvicorn.run(app)
+    uvicorn.run(socket_app)

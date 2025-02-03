@@ -30,7 +30,7 @@ users = [
     {
         "login": "admin",
         "password": "admin",
-        "token": 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiYWRtaW4iLCJleHAiOjE3Mzg1MzY3NzB9.t7hleSIU128HWkalUBMSrETlk051SFtksGCzfgITQ58'
+        "token": ''#"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjoiYWRtaW4iLCJleHAiOjE3Mzg2MjIxMTd9.MjTspK8k5WiVDhxj7I4v9Bw2j3nRKGqratQHf8IFYLU"
     }
 ]
 
